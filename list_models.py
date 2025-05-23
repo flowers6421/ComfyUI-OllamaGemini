@@ -1,19 +1,26 @@
 import os
-import json
+# import json # Not needed anymore as we're reading from env
 import requests
 from google import generativeai as genai
 from openai import OpenAI
 
 def get_api_keys():
+    """
+    Retrieves API keys from environment variables.
+    Looks for GEMINI_API_KEY and OPENAI_API_KEY.
+    """
     try:
-        config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config.json')
-        with open(config_path, 'r') as f:
-            config = json.load(f)
-        gemini_api_key = config.get("GEMINI_API_KEY", "")
-        openai_api_key = config.get("OPENAI_API_KEY", "")
+        gemini_api_key = os.getenv("GEMINI_API_KEY")
+        openai_api_key = os.getenv("OPENAI_API_KEY")
+
+        if not gemini_api_key:
+            print("Warning: GEMINI_API_KEY environment variable not set.")
+        if not openai_api_key:
+            print("Warning: OPENAI_API_KEY environment variable not set.")
+
         return gemini_api_key, openai_api_key
     except Exception as e:
-        print(f"Error loading API keys: {str(e)}")
+        print(f"Error getting API keys from environment variables: {str(e)}")
         return None, None
 
 def get_gemini_models():
@@ -32,12 +39,12 @@ def get_gemini_models():
         # Image Generation Models
         "imagen-3.0-generate-002"
     ]
-    
+
     gemini_api_key, _ = get_api_keys()
     if not gemini_api_key:
         print("Gemini API key is missing. Using default model list.")
         return default_gemini_models
-    
+
     try:
         genai.configure(api_key=gemini_api_key)
         models = genai.list_models()
@@ -45,7 +52,7 @@ def get_gemini_models():
         # Extract just the model name from the full path
         model_names = [name.split('/')[-1] for name in model_names]
         print(f"Gemini models fetched: {len(model_names)} models available")
-        
+
         # Include common and image generation models that might not be returned by API
         for model in default_gemini_models:
             if model not in model_names:
@@ -74,18 +81,18 @@ def get_openai_models():
         # DeepSeek Models
         "deepseek-ai/deepseek-r1"
     ]
-    
+
     _, openai_api_key = get_api_keys()
     if not openai_api_key:
         print("OpenAI API key is missing. Using default model list.")
         return default_openai_models
-    
+
     try:
         client = OpenAI(api_key=openai_api_key)
         models = client.models.list()
         model_ids = [model.id for model in models.data]
         print(f"OpenAI models fetched: {len(model_ids)} models available")
-        
+
         # Include common models that might not be returned by API
         for model in default_openai_models:
             if model not in model_ids:
@@ -101,14 +108,22 @@ def get_gemini_image_models():
     return ["gemini-2.0-flash-exp-image-generation", "imagen-3.0-generate-002"]
 
 if __name__ == "__main__":
+    print("--- Attempting to retrieve API keys from environment variables ---")
+    gemini_key, openai_key = get_api_keys()
+    if gemini_key:
+        print("Gemini API Key found.")
+    if openai_key:
+        print("OpenAI API Key found.")
+    print("------------------------------------------------------------------")
+
     print("\n=== Gemini Models ===")
     gemini_models = get_gemini_models()
     for model in gemini_models:
         print(f"Name: {model}")
-        print("")
-    
+    print(f"\nTotal Gemini Models listed: {len(gemini_models)}")
+
     print("\n=== OpenAI Models ===")
     openai_models = get_openai_models()
     for model in openai_models:
         print(f"ID: {model}")
-        print("") 
+    print(f"\nTotal OpenAI Models listed: {len(openai_models)}")
