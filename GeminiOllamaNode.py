@@ -758,9 +758,12 @@ class GeminiClaudeAPI:
 
 class GeminiLLMAPI:
     def __init__(self):
+        # Get API key from config file (can be overridden by input parameter)
         self.gemini_api_key = get_gemini_api_key()
         if self.gemini_api_key:
             genai.configure(api_key=self.gemini_api_key, transport='rest')
+        else:
+            print("No Gemini API key found in config.json. You can provide it as an input parameter.")
 
         # Import model list from list_models.py
         from .list_models import get_gemini_models
@@ -792,6 +795,7 @@ class GeminiLLMAPI:
                 ], {"default": "raw_text"}),
             },
             "optional": {
+                "api_key": ("STRING", {"default": "", "multiline": False}),
                 "image": ("IMAGE",),
                 "video": ("IMAGE",),  # Video is represented as a tensor with shape [frames, height, width, channels]
                 "audio": ("AUDIO",),  # Audio input
@@ -803,9 +807,15 @@ class GeminiLLMAPI:
     FUNCTION = "generate_content"
     CATEGORY = "AI API/Gemini"
 
-    def generate_content(self, prompt, input_type, gemini_model, stream, structure_output, prompt_structure, structure_format, output_format, image=None, video=None, audio=None):
-        if not self.gemini_api_key:
-            return ("Gemini API key missing",)
+    def generate_content(self, prompt, input_type, gemini_model, stream, structure_output, prompt_structure, structure_format, output_format, api_key="", image=None, video=None, audio=None):
+        # Use the provided API key if available, otherwise use the one from config
+        gemini_api_key = api_key if api_key.strip() else self.gemini_api_key
+
+        if not gemini_api_key:
+            return ("Gemini API key missing. Please provide an API key or configure it in config.json",)
+
+        # Configure the API with the appropriate key
+        genai.configure(api_key=gemini_api_key, transport='rest')
 
         try:
             # Configure generation parameters
@@ -899,7 +909,7 @@ class GeminiLLMAPI:
                             url = f"https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:generateContent"
                             headers = {
                                 "Content-Type": "application/json",
-                                "x-goog-api-key": self.gemini_api_key
+                                "x-goog-api-key": gemini_api_key
                             }
 
                             # Create the request body
